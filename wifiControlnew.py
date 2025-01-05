@@ -11,8 +11,8 @@ def set_motor_state(base_url, motor:str, speed:int, direction:str):
     :param direction: Direction of the motor ("forward", "reverse", or "stop")
     """
     calibration_factor = -0.05
-    min_speed = 100
-    max_speed = 130
+    min_speed = 120
+    max_speed = 150
     
     if speed > 100 or speed < 0:
         return

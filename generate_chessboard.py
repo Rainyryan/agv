@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 # Define chessboard parameters
-chessboard_size = (9, 6)  # Number of internal corners (width, height)
+chessboard_size = (12, 6)  # Number of internal corners (width, height)
 square_size = 80  # Size of each square in mm (adjust as per your requirement)
 
 # Create a blank white image

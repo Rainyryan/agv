@@ -12,6 +12,7 @@ shared_state = {
     "dests": [],
     "stop": False,
     "lpoint":[],
+    "ori":None
 }
 state_lock = threading.Lock()
 
@@ -39,7 +40,7 @@ def mouse_callback(event, x, y, flags, param):
 def get_orien(destination, cur_pos):
     dx = destination[0] - cur_pos[0]
     dy = destination[1] - cur_pos[1]
-    dist = np.sqrt(dx**2 + dy**2)
+    dist = np.abs(dx) + np.abs(dy)
     return (np.arctan2(dy, dx) * 180 / np.pi, dist)
 
 def projection_on_line(P1, P2, P3):
@@ -53,17 +54,17 @@ def projection_on_line(P1, P2, P3):
 
     proj_w_on_v = np.clip(np.dot(w, v) / np.dot(v, v), 0, 1) * v
     P_proj = P1 + proj_w_on_v
-    return P_proj.tolist()
+    return P_proj
 
 def get_lookahead_point(prev_p, next_p, cur_point, cur_orien):
     if np.array_equal(prev_p, next_p):
         return prev_p
     ldist = 50#lookahead distance
     
-    v1 = np.array(np.cos(np.deg2rad(cur_orien)), np.sin(np.deg2rad(cur_orien)))
-    v1 = v1 / np.linalg.norm(v1)
+    # v1 = np.array(np.cos(np.deg2rad(cur_orien)), np.sin(np.deg2rad(cur_orien)))
+    # v1 = v1 / np.linalg.norm(v1)
     
-    lahdp = cur_point+v1*ldist
+    lahdp = cur_point+cur_orien*ldist
     
     # print(prev_p, next_p, lahdp)
     return projection_on_line(prev_p, next_p, lahdp)
@@ -100,10 +101,16 @@ def video_analysis_thread(camera_matrix, dist_coeffs, this_aruco_dictionary, thi
                 rmat, _ = cv2.Rodrigues(rvec)
                 euler_angles = rotation_matrix_to_euler_angles(rmat)
                 orientation = euler_angles[2]
-
+                
+                
+                ori = [marker_corners[0][1][0]-marker_corners[0][0][0], marker_corners[0][1][1]-marker_corners[0][0][1]]
+                ori = ori = ori / np.linalg.norm(ori)
+                
+                
                 with state_lock:
                     shared_state["position"] = position
                     shared_state["orientation"] = orientation
+                    shared_state['ori'] = ori
 
                 cv2.aruco.drawDetectedMarkers(frame, corners)
                 cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, 0.0526)
@@ -151,9 +158,10 @@ def robot_control_thread():
             position = shared_state["position"]
             orientation = shared_state["orientation"]
             dests = shared_state["dests"]
+            ori = shared_state['ori']
 
         if position is not None and orientation is not None and len(dests) != 0:
-            lpoint = get_lookahead_point(np.array(dests[previ]), np.array(dests[i]), np.array(position), orientation)
+            lpoint = get_lookahead_point(np.array(dests[previ]), np.array(dests[i]), np.array(position), ori)
             # print(previ, i )
             # print(dests)
             
@@ -161,13 +169,19 @@ def robot_control_thread():
             with state_lock:
                 shared_state["lpoint"] = lpoint
 
+            
             _, dist = get_orien(dests[i], position)
-            orien, _ = get_orien(lpoint, position)
-            print(orien)
-            orien -= orientation
+            # orien, _ = get_orien(lpoint, position)
+            # print(orien)
+            # orien -= orientation
+            
+            vt = lpoint-position
+            vt = vt/np.linalg.norm(vt)
+
+            det = np.linalg.det(np.array([ori,vt]))
            
 
-            if dist < 30:
+            if dist < 40:
                 set_motor_state(esp8266_base_url, "motorA", 0, "stop")
                 set_motor_state(esp8266_base_url, "motorB", 0, "stop")
                 print("Reached destination! Bitch")
@@ -180,11 +194,11 @@ def robot_control_thread():
             # speedA = base_speed - (100 - base_speed) * orien / 90
             # speedB = base_speed + (100 - base_speed) * orien / 90
 
-            if orien > 20:
+            if det > 0.25:
                 set_motor_state(esp8266_base_url, "motorA", 10, "stop")
                 set_motor_state(esp8266_base_url, "motorB", 5, "forward")
                 continue
-            if orien < -20:
+            if det < -0.25:
                 set_motor_state(esp8266_base_url, "motorA", 5, "forward")
                 set_motor_state(esp8266_base_url, "motorB", 10, "stop")
                 continue

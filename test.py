@@ -39,3 +39,9 @@ print(type(a), a, a[0])
 print(tuple([1, 2, 3]))
 
 print(-179%180)
+ori = [0, 1]
+vt = [1, 0]
+M = np.array([ori,vt])
+det = np.linalg.det(M)
+
+print(det)

@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Define the dictionary we want to use
-aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
+aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
 # Generate a marker
-marker_id = 1
+marker_id = 3
 marker_size = 200  # Size in pixels
 marker_image = cv2.aruco.generateImageMarker(aruco_dict, marker_id, marker_size)
 
